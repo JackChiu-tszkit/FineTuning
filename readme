@@ -187,6 +187,5 @@ tokenizer.save_pretrained("./merged_model")
 ---
 
 ## License
-
 Choose according to your project (MIT/Apache-2.0).
 Ensure compliance with the base model’s and dataset’s licenses.
