@@ -1,0 +1,200 @@
+Got it 👍 Here’s the **English version of the README.md** for your project.
+
+---
+
+# Qwen2-0.5B LoRA Fine-tuning Example
+
+This is a minimal working example of fine-tuning **Qwen/Qwen2-0.5B** with **HuggingFace Transformers + PEFT (LoRA)**.
+The dataset is in a dialogue format (`instruction` → `response`). After training, a quick inference demo is provided.
+
+## Table of Contents
+
+* [Requirements](#requirements)
+* [Installation](#installation)
+* [Dataset Preparation](#dataset-preparation)
+* [Script Overview](#script-overview)
+* [Training](#training)
+* [Inference](#inference)
+* [Saving & Loading LoRA](#saving--loading-lora)
+* [FAQ](#faq)
+* [Customization](#customization)
+* [License](#license)
+
+---
+
+## Requirements
+
+* Python 3.9+ (3.10/3.11 recommended)
+* NVIDIA GPU + CUDA (recommended; CPU works but is slow)
+* Recommended VRAM: ≥ 8GB (4-bit quantization reduces usage)
+
+---
+
+## Installation
+
+```bash
+# (Optional) Create virtual environment
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+
+# Basic dependencies
+pip install -U pip
+pip install "transformers>=4.39" "datasets>=2.16" "peft>=0.10" accelerate
+
+# For 4-bit quantization (works best on Linux + CUDA)
+pip install bitsandbytes
+```
+
+> If `bitsandbytes` fails to install or you have no GPU, set `load_in_4bit=False` in the script.
+
+---
+
+## Dataset Preparation
+
+Prepare a `data.jsonl` file in the project root:
+
+```json
+{"instruction": "Hello", "response": "Hi, how can I help you today?"}
+{"instruction": "My package got lost, what should I do?", "response": "Please contact the courier service and request support from the seller."}
+```
+
+The script formats it into:
+
+```
+User: <instruction>
+System: <response>
+```
+
+---
+
+## Script Overview
+
+1. **Load dataset**: `datasets.load_dataset("json", data_files="data.jsonl")`
+2. **Format**: convert into `User:` / `System:` format
+3. **Load model/tokenizer**: `Qwen/Qwen2-0.5B` with optional 4-bit quantization
+4. **LoRA config**: `target_modules=["q_proj","v_proj"]`, `r=8, alpha=16, dropout=0.1`
+5. **Tokenization & Collator**: `max_length=256`, `DataCollatorForLanguageModeling(mlm=False)`
+6. **Training**: `Trainer` with standard arguments
+7. **Inference**: run `model.generate` with a test prompt
+
+---
+
+## Training
+
+Run:
+
+```bash
+python train.py
+```
+
+Key training parameters (adjust in code):
+
+* `batch_size=2`
+* `num_train_epochs=3`
+* `learning_rate=2e-4`
+* `fp16=True` (set `False` if not supported)
+* `save_strategy="no"` (change to `"epoch"` or `"steps"` for checkpoints)
+
+> **No bitsandbytes / full precision:**
+> Replace:
+>
+> ```python
+> model = AutoModelForCausalLM.from_pretrained(model_name, load_in_4bit=True, device_map="auto")
+> ```
+>
+> with:
+>
+> ```python
+> model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
+> ```
+
+---
+
+## Inference
+
+The script includes a quick test:
+
+```python
+prompt = "User: Hello, my package got lost. What should I do?\nSystem:"
+```
+
+Run to see the model’s reply.
+
+---
+
+## Saving & Loading LoRA
+
+By default, checkpoints are not saved. After training, you can manually save:
+
+```python
+# Save adapter
+model.save_pretrained("./lora_adapter")
+tokenizer.save_pretrained("./lora_adapter")
+```
+
+**Load LoRA for inference:**
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import PeftModel
+
+base_model = "Qwen/Qwen2-0.5B"
+adapter_dir = "./lora_adapter"
+
+tokenizer = AutoTokenizer.from_pretrained(base_model)
+base = AutoModelForCausalLM.from_pretrained(base_model, device_map="auto")
+model = PeftModel.from_pretrained(base, adapter_dir)
+model.eval()
+```
+
+**Merge LoRA into base model** (optional, for easier deployment):
+
+```python
+merged = model.merge_and_unload()
+merged.save_pretrained("./merged_model")
+tokenizer.save_pretrained("./merged_model")
+```
+
+---
+
+## FAQ
+
+**Q1: bitsandbytes install fails / 4-bit error?**
+
+* Option 1: disable 4-bit (use full precision).
+* Option 2: ensure correct CUDA/driver setup.
+
+**Q2: Out of memory (OOM)?**
+
+* Reduce `max_length` or `batch_size`, enable 4-bit/8-bit, or use gradient accumulation.
+
+**Q3: Label errors / no loss?**
+
+* Ensure `DataCollatorForLanguageModeling(mlm=False)` and `remove_columns=train_dataset.column_names`.
+
+**Q4: Repetitive generation?**
+
+* Adjust sampling: add `temperature`, `top_p`, `num_beams`, `repetition_penalty`.
+
+**Q5: Mixed language / tokenization issues?**
+
+* Verify tokenizer matches the model; consider normalizing dataset formatting.
+
+---
+
+## Customization
+
+* **Template**: edit `format_example` for multi-turn conversations.
+* **LoRA scope**: expand to `["q_proj","k_proj","v_proj","o_proj"]` for stronger adaptation.
+* **Checkpoints**: change `save_strategy="epoch"` with `save_total_limit`.
+* **Evaluation/logging**: add `evaluation_strategy="steps"`, `eval_dataset`, `report_to="tensorboard"`.
+
+---
+
+## License
+
+Choose according to your project (MIT/Apache-2.0).
+Ensure compliance with the base model’s and dataset’s licenses.
+
+---
+
+👉 Do you want me to also include a **quick command table** (e.g., training, saving, loading, inference) at the end of the README for faster reference?
