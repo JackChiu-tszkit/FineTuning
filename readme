@@ -1,7 +1,3 @@
-Got it 👍 Here’s the **English version of the README.md** for your project.
-
----
-
 # Qwen2-0.5B LoRA Fine-tuning Example
 
 This is a minimal working example of fine-tuning **Qwen/Qwen2-0.5B** with **HuggingFace Transformers + PEFT (LoRA)**.
@@ -194,7 +190,3 @@ tokenizer.save_pretrained("./merged_model")
 
 Choose according to your project (MIT/Apache-2.0).
 Ensure compliance with the base model’s and dataset’s licenses.
-
----
-
-👉 Do you want me to also include a **quick command table** (e.g., training, saving, loading, inference) at the end of the README for faster reference?
